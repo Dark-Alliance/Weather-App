@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
                 .check()
         }
 
+
     }
 
     @SuppressLint("MissingPermission")
@@ -105,7 +106,16 @@ class MainActivity : AppCompatActivity() {
             Log.i("Current Latitude", "$latitude")
 
             val longitude = mLastLocation?.longitude
-            Log.i("Currrent Longitude", "$longitude")
+            Log.i("Current Longitude", "$longitude")
+            getLocationWeatherDetails()
+        }
+
+        private fun getLocationWeatherDetails(){
+            if(Constants.isNetworkAvailable(this@MainActivity)){
+
+            }else{
+
+            }
         }
     }
 
