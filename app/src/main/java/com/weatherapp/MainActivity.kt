@@ -1,6 +1,7 @@
 package com.weatherapp
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -14,6 +15,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat.startActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationResult
@@ -34,6 +36,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
 
+    private var mProgressDialog: Dialog? = null
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -44,9 +48,7 @@ class MainActivity : AppCompatActivity() {
 
         if (!isLocationEnabled()) {
             Toast.makeText(
-                this,
-                "Your location provider is turned off. Please Turn it ON",
-                Toast.LENGTH_LONG
+                this, "Your location provider is turned off. Please Turn it ON", Toast.LENGTH_LONG
             ).show()
 
             val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
@@ -55,12 +57,10 @@ class MainActivity : AppCompatActivity() {
         } else {
             //Checking if all the locations are granted and if yes,
             // then asking for the user location
-            Dexter.withActivity(this)
-                .withPermissions(
+            Dexter.withActivity(this).withPermissions(
                     android.Manifest.permission.ACCESS_FINE_LOCATION,
                     android.Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-                .withListener(object : MultiplePermissionsListener {
+                ).withListener(object : MultiplePermissionsListener {
                     override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
                         if (report!!.areAllPermissionsGranted()) {
 
@@ -78,13 +78,11 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onPermissionRationaleShouldBeShown(
-                        permissions: MutableList<PermissionRequest>?,
-                        token: PermissionToken?
+                        permissions: MutableList<PermissionRequest>?, token: PermissionToken?
                     ) {
                         showRationalDialogForPermission()
                     }
-                }).onSameThread()
-                .check()
+                }).onSameThread().check()
         }
 
 
@@ -97,8 +95,7 @@ class MainActivity : AppCompatActivity() {
             com.google.android.gms.location.LocationRequest.PRIORITY_HIGH_ACCURACY
 
         mFusedLocationClient.requestLocationUpdates(
-            mLocationRequest, mLocationCallBack,
-            Looper.myLooper()
+            mLocationRequest, mLocationCallBack, Looper.myLooper()
         )
 
     }
@@ -116,24 +113,26 @@ class MainActivity : AppCompatActivity() {
 
         private fun getLocationWeatherDetails(latitude: Double?, longitude: Double?) {
             if (Constants.isNetworkAvailable(this@MainActivity)) {
-                val retrofit: Retrofit = Retrofit.Builder()
-                    .baseUrl(Constants.BASE_URL)
-                    .addConverterFactory(GsonConverterFactory.create())
-                    .build()
+                val retrofit: Retrofit = Retrofit.Builder().baseUrl(Constants.BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create()).build()
 
-                val service: WeatherService = retrofit
-                    .create<WeatherService>(WeatherService::class.java)
+                val service: WeatherService =
+                    retrofit.create<WeatherService>(WeatherService::class.java)
 
                 val listCall: Call<WeatherResponse> = service.getWeather(
                     latitude!!, longitude!!, Constants.METRIC_UNIT, Constants.APP_ID
                 )
 
+                showCustomeDialog()
+
                 listCall.enqueue(object : Callback<WeatherResponse> {
                     override fun onResponse(
-                        call: Call<WeatherResponse>,
-                        response: Response<WeatherResponse>?
+                        call: Call<WeatherResponse>, response: Response<WeatherResponse>?
                     ) {
                         if (response!!.isSuccessful) {
+
+                            hideProgressDialog()
+
                             val weatherList: WeatherResponse? = response.body()
                             Log.i("Response Result", "$weatherList")
                         } else {
@@ -144,19 +143,26 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 404 -> {
                                     Log.e("Error 404", "Not Found")
-                                }else ->
-                                Log.e("Error", "Generic Error")
+                                }
+                                else -> Log.e("Error", "Generic Error")
                             }
                         }
 
                     }
 
                     override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
-                        Log.e("Error", t!!.message.toString())
+                        Log.e("Error", t.message.toString())
+                        hideProgressDialog()
                     }
 
                 })
             } else {
+                Toast.makeText(
+                    this@MainActivity,
+                    "No internet connection available.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }   
 
             }
         }
@@ -165,8 +171,7 @@ class MainActivity : AppCompatActivity() {
     private fun showRationalDialogForPermission() {
         AlertDialog.Builder(this)
             .setMessage("It looks like you have turned off permissions required for this feature. It can be enabled under Application Settings")
-            .setPositiveButton("GO TO SETTINGS")
-            { _, _ ->
+            .setPositiveButton("GO TO SETTINGS") { _, _ ->
                 try {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                     val uri = Uri.fromParts("package", packageName, null)
@@ -175,8 +180,7 @@ class MainActivity : AppCompatActivity() {
                 } catch (e: ActivityNotFoundException) {
                     e.printStackTrace()
                 }
-            }
-            .setNegativeButton("Cancle") { dialog, _ ->
+            }.setNegativeButton("Cancle") { dialog, _ ->
                 dialog.dismiss()
             }.show()
     }
@@ -184,10 +188,22 @@ class MainActivity : AppCompatActivity() {
     private fun isLocationEnabled(): Boolean {
         val locationManager: LocationManager =
             getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
-                || locationManager.isProviderEnabled(
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
             LocationManager.NETWORK_PROVIDER
         )
+    }
+
+    private fun showCustomeDialog() {
+        mProgressDialog = Dialog(this)
+        mProgressDialog!!.setContentView(R.layout.dialog_custom_progress)
+        mProgressDialog!!.show()
+
+    }
+
+    private fun hideProgressDialog() {
+        if (mProgressDialog != null) {
+            mProgressDialog!!.dismiss()
+        }
     }
 
 }
