@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-
+<!--TODO (STEP 1: Design the main screen to show the API response data in UI.)-->
+<!--START-->
+<!--Here we have done a list of things :
+    1. We have added all the color values to colors.xml.
+    2. We have added all the dimen values to dimens.xml.
+    3. We have added all the string values to strings.xml.
+    4. And finally, we have added all the images used in the drawable folder in form of vector image.
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
